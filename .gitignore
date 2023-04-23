@@ -1,4 +1,5 @@
-/.env
-/db_pass
-/node_modules
-/package-lock.json
+.env
+db_pass
+node_modules
+package-lock.json
+.wwebjs_auth
