@@ -98,7 +98,7 @@ client.on('message', async (msg) => {
 
                         // send message to user
                         await chat.sendMessage(message);
-                        console.log('Transcription: ' + msg_to_process);
+                        console.log('Transcription: ' + messages);
                     } catch (e) {
                         console.log(e);
                     }
