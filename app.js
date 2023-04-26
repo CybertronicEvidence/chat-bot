@@ -22,7 +22,7 @@ app.post('/subscriptions', async (req, res) => {
         const { phone, subscriptionId } = req.body;
 
         // Query user model for user with given phone number
-        const user = await User.findOne({ where: { phone } });
+        const user = await User.findOne({ where: { phoneNumber: phone } });
         if (!user) {
             return res.status(400).send('User not found');
         }
