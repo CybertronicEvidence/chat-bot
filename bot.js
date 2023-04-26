@@ -55,6 +55,11 @@ client.on('message', async (msg) => {
         }
 
         if (msg.hasMedia) {
+            function randomInt() {
+                const min = 1
+                const max = 1000000
+                return Math.floor(Math.random() * (max - min + 1) + min)
+            }
             console.log(msg);
 
             console.log("Media");
