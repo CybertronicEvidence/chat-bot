@@ -5,8 +5,7 @@ const Training = sequelize.define(
     'training',
     {
         trainingData: {
-            type: DataTypes.STRING,
-            allowNull: false
+            type: DataTypes.STRING
         }
     }
 )
