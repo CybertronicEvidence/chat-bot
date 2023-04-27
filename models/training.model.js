@@ -4,7 +4,7 @@ const { sequelize } = require("../config/database.config");
 const Training = sequelize.define(
     'training',
     {
-        trainingData: {
+        data: {
             type: DataTypes.STRING
         }
     }
