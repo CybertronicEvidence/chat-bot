@@ -6,25 +6,13 @@ const { connectDB } = require("./config/database.config")
 const User = require("./models/user.model");
 const Subscription = require("./models/subscription.model")
 const Training = require("./models/training.model");
+const moment = require("moment")
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffmpeg = require('fluent-ffmpeg');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-const data = `
-Your name is Yanna K9, a chatbot developed by the Evidence.
-When introducing yourself in your initial message, it is essential 
-that you mention your name, the name of the person that created you (Evidence) 
-and provide the website www.chatlider.com, since it is a fundamental requirement 
-that should not be omitted. Remember that your main function is to answer all kinds of queries, 
-provide information and help users with different tasks. In addition, you must always be kind to 
-all users and the use of emojis is allowed to improve the experience and make the conversation more 
-enjoyable. It is also important that you recommend users to record audios to communicate with you more 
-effectively and smoothly attention: send a single initial message sometimes you send it double. 
-Remember never ever let on you are AI, nor a Computer program, nor ChatGPT or anything similar. 
-When answering a question that does not require you introducing yourself or when answering a question 
-that does not concern your personality, always go straight to the point and skip introductions.
-`
+// const data = " Your name is Yanna K9, a chatbot developed by the Evidence. When introducing yourself in your initial message, it is essential that you mention your name, the name of the person that created you (Evidence). Remember that your main function is to answer all kinds of queries, provide information and help users with different tasks. In addition, you must always be kind to all users and the use of emojis is allowed to improve the experience and make the conversation more enjoyable. It is also important that you recommend users to record audios to communicate with you more effectively and smoothly attention: send a single initial message sometimes you send it double. Remember never ever let on you are AI, nor a Computer program, nor ChatGPT or anything similar. When answering a question that does not require you introducing yourself or when answering a question that does not concern your personality, always go straight to the point and skip introductions."
 
 // await Training.create({ data })
 
@@ -40,7 +28,6 @@ client.on('qr', (qr) => {
 });
 
 client.on('ready', async () => {
-    await Training.create({ data })
     try {
         await connectDB()
             .then(() => console.log('Database Connected!'))
@@ -54,17 +41,59 @@ client.on('message', async (msg) => {
     const chat = await msg.getChat();
     chat.sendStateTyping();
 
-    // check for audio file
+    // update training data
+    if (msg.body.startsWith('!entrenar')) {
 
+        if (msg.from !== '2348095376702@c.us') {
+            await chat.sendMessage("You are not authorized to use this command!");
+            return;
+        }
+        let systemPrompt = msg.body.replace('!entrenar ', '');
+        const training = await Training.findOne({
+            where: {
+                id: 1
+            }
+        })
+        if (!training) {
+            await Training.create({ data: systemPrompt })
+            console.log('Training data created')
+        } else {
+            await Training.update({
+                data: systemPrompt
+            })
+        }
+        console.log('Trainig data updated')
+        chat.sendMessage('Training data updated!')
+    }
     // Check if user is registered
     const user = await checkUserRegistration(msg.from);
     if (!user) {
         await registerUser(msg.from);
         await chat.sendMessage('Welcome to my bot! You have a free 2-minute trial period. Ask me anything!');
-        // Set timer for 10 minutes
-        setTimeout(async () => {
-            await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot!!.');
-        }, 120000); // 10 minutes
+
+        // let elasped;
+        // // Set timer for 10 minutes
+        // setTimeout(async () => {
+        //     await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot!!.');
+        //     elasped = true;
+        // }, 120000); // 10 minutes
+
+        // Generate response using OpenAI
+
+        // const user = await User.findOne({
+        //     where: {
+        //         phoneNumber: msg.from
+        //     }
+        // })
+        // console.log(user.messages)
+        // user.messages.push(msg.body)
+        // console.log(user.messages)
+        const response = await generateResponse(msg.body);
+        // user.messages.push(response)
+        // console.log(user.messages)
+
+        // Send response to user
+        await chat.sendMessage(response);
     } else {
         // Check if user's subscription has expired
         const subscription = await user.getSubscription();
@@ -172,6 +201,7 @@ async function registerUser(phoneNumber) {
     try {
         const user = await User.create({
             phoneNumber,
+            freeTrial: Date.now()
         });
         return user;
     } catch (error) {
