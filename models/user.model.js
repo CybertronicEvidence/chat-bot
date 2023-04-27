@@ -9,6 +9,12 @@ const User = sequelize.define(
             type: DataTypes.STRING,
             allowNull: false,
             unique: true
+        },
+        messages: {
+            type: DataTypes.ARRAY(DataTypes.TEXT)
+        },
+        freeTrial: {
+            type: DataTypes.DATE
         }
     }
 )
