@@ -26,9 +26,7 @@ When answering a question that does not require you introducing yourself or when
 that does not concern your personality, always go straight to the point and skip introductions.
 `
 
-const training = new Training({
-    trainingData: data
-})
+// await Training.create({ data })
 
 // Initialize WhatsApp client
 const client = new Client({
@@ -42,6 +40,7 @@ client.on('qr', (qr) => {
 });
 
 client.on('ready', async () => {
+    await Training.create({ data })
     try {
         await connectDB()
             .then(() => console.log('Database Connected!'))
@@ -182,9 +181,15 @@ async function registerUser(phoneNumber) {
 
 // Generate response using OpenAI
 async function generateResponse(input) {
+    const training = await Training.findOne({
+        where: {
+            id: 1
+        }
+    })
+    console.log(training.data)
     const completion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: `${input}` }],
+        messages: [{ role: "user", content: `${training.data} Give a response to this prompt "${input}" based on the data above.` }],
     });
 
     return completion.data.choices[0].message.content;
