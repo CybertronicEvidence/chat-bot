@@ -6,7 +6,7 @@ const { connectDB } = require("./config/database.config")
 const User = require("./models/user.model");
 const Subscription = require("./models/subscription.model")
 const Training = require("./models/training.model");
-const moment = require("moment")
+const { compareAsc } = require('date-fns');
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffmpeg = require('fluent-ffmpeg');
@@ -71,6 +71,17 @@ client.on('message', async (msg) => {
         await registerUser(msg.from);
         await chat.sendMessage('Welcome to my bot! You have a free 2-minute trial period. Ask me anything!');
 
+        // const user = await User.findOne({
+        //     where: {
+        //         phoneNumber: msg.from
+        //     }
+        // })
+        // const comparisonResult = compareAsc(new Date(), user.freeTrial);
+
+        // if (comparisonResult === 1) {
+        //     await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot!!.');
+        //     return
+        // }
         // let elasped;
         // // Set timer for 10 minutes
         // setTimeout(async () => {
@@ -80,16 +91,16 @@ client.on('message', async (msg) => {
 
         // Generate response using OpenAI
 
-        // const user = await User.findOne({
-        //     where: {
-        //         phoneNumber: msg.from
-        //     }
-        // })
+        const user = await User.findOne({
+            where: {
+                phoneNumber: msg.from
+            }
+        })
         // console.log(user.messages)
-        // user.messages.push(msg.body)
+        // user.messages.append(msg.body)
         // console.log(user.messages)
-        const response = await generateResponse(msg.body);
-        // user.messages.push(response)
+        const response = await generateResponder(msg.from, msg.body);
+        // user.messages.append(response)
         // console.log(user.messages)
 
         // Send response to user
@@ -199,9 +210,11 @@ async function checkUserRegistration(phoneNumber) {
 // Register user
 async function registerUser(phoneNumber) {
     try {
+        const currentTime = new Date();
+        const expirationTime = new Date(currentTime.getTime() + (2 * 60 * 1000));
         const user = await User.create({
             phoneNumber,
-            freeTrial: Date.now()
+            freeTrial: expirationTime
         });
         return user;
     } catch (error) {
@@ -225,8 +238,31 @@ async function generateResponse(input) {
     return completion.data.choices[0].message.content;
 }
 
-async function getError(input) {
-    return 'Your free trial period has expired. Please register a subscription to continue using the bot.'
+async function generateResponder(phone, input) {
+    const user = await User.findOne({
+        where: {
+            phoneNumber: phone
+        }
+    })
+    const date = new Date();
+    if (user.freeTrial < date) {
+        return 'Your free trial period has expired. Please register a subscription to continue using the bot!!'
+    } else {
+        const training = await Training.findOne({
+            where: {
+                id: 1
+            }
+        })
+        const completion = await openai.createChatCompletion({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: `${training.data} Give a response to this prompt "${input}" based on the data above.` }],
+        });
+
+        return completion.data.choices[0].message.content;
+    }
+
+
+
 }
 
 // Start client
