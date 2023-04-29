@@ -10,9 +10,6 @@ const User = sequelize.define(
             allowNull: false,
             unique: true
         },
-        messages: {
-            type: DataTypes.ARRAY(DataTypes.TEXT)
-        },
         hasUsedFreeTrial: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
