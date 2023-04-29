@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const { sequelize } = require("../config/database.config");
+const User = require("./user.model")
 
 const Message = sequelize.define(
     'message',
@@ -10,6 +11,8 @@ const Message = sequelize.define(
         }
     });
 
+User.hasMany(Message);
+Message.belongsTo(User);
 
 module.exports = Message;
 
