@@ -13,9 +13,16 @@ const User = sequelize.define(
         messages: {
             type: DataTypes.ARRAY(DataTypes.TEXT)
         },
-        freeTrial: {
-            type: DataTypes.DATE
-        }
+        hasUsedFreeTrial: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            allowNull: false,
+        },
+        hasExceededFreeTrialLimit: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            allowNull: false,
+        },
     }
 )
 
