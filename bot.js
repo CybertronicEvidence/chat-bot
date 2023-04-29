@@ -3,6 +3,7 @@ const qrcode = require('qrcode-terminal');
 const openai = require("./config/openai.config")
 const fs = require("fs");
 const { connectDB } = require("./config/database.config")
+const { Op } = require("sequelize")
 const User = require("./models/user.model");
 const Subscription = require("./models/subscription.model")
 const Training = require("./models/training.model");
@@ -14,12 +15,12 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 // const data = " Your name is Yanna K9, a chatbot developed by the Evidence. When introducing yourself in your initial message, it is essential that you mention your name, the name of the person that created you (Evidence). Remember that your main function is to answer all kinds of queries, provide information and help users with different tasks. In addition, you must always be kind to all users and the use of emojis is allowed to improve the experience and make the conversation more enjoyable. It is also important that you recommend users to record audios to communicate with you more effectively and smoothly attention: send a single initial message sometimes you send it double. Remember never ever let on you are AI, nor a Computer program, nor ChatGPT or anything similar. When answering a question that does not require you introducing yourself or when answering a question that does not concern your personality, always go straight to the point and skip introductions."
 
-// await Training.create({ data })
-
 // Initialize WhatsApp client
 const client = new Client({
     authStrategy: new LocalAuth()
 });
+
+let elasped = false;
 
 // Start client
 client.on('qr', (qr) => {
@@ -71,43 +72,49 @@ client.on('message', async (msg) => {
         await registerUser(msg.from);
         await chat.sendMessage('Welcome to my bot! You have a free 2-minute trial period. Ask me anything!');
 
-        // const user = await User.findOne({
-        //     where: {
-        //         phoneNumber: msg.from
-        //     }
-        // })
-        // const comparisonResult = compareAsc(new Date(), user.freeTrial);
-
-        // if (comparisonResult === 1) {
-        //     await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot!!.');
-        //     return
-        // }
-        // let elasped;
-        // // Set timer for 10 minutes
-        // setTimeout(async () => {
-        //     await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot!!.');
-        //     elasped = true;
-        // }, 120000); // 10 minutes
-
-        // Generate response using OpenAI
-
         const user = await User.findOne({
             where: {
                 phoneNumber: msg.from
             }
         })
-        // console.log(user.messages)
-        // user.messages.append(msg.body)
-        // console.log(user.messages)
-        const response = await generateResponder(msg.from, msg.body);
-        // user.messages.append(response)
-        // console.log(user.messages)
 
-        // Send response to user
-        await chat.sendMessage(response);
+        // Mark user as having used the free trial
+        await user.update({ hasUsedFreeTrial: true });
+
+        // Set timer for 2 minutes
+        setTimeout(async () => {
+            // Check if user has upgraded to a paid subscription
+            const hasPaidSubscription = await Subscription.findOne({
+                where: { userId: user.id, expirationDate: { [Op.gte]: new Date() } }
+            });
+
+            if (!hasPaidSubscription) {
+                // Mark user as having exceeded the free trial limit
+                await user.update({ hasExceededFreeTrialLimit: true });
+                await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot.');
+            }
+        }, 120000); // 2 minutes
+
+
     } else {
+        // Check if user has exceeded the free trial limit
+        const user = await User.findOne({
+            where: {
+                phoneNumber: msg.from
+            }
+        })
+
+        if (user.hasExceededFreeTrialLimit) {
+            await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot.');
+            return;
+        }
+
         // Check if user's subscription has expired
-        const subscription = await user.getSubscription();
+        const subscription = await Subscription.findOne({
+            where: { userId: user.id, expirationDate: { [Op.gte]: new Date() } }
+        });
+
+        // Check if user's subscription has expired
         if (subscription && subscription.expirationDate < new Date()) {
             chat.sendMessage('Your subscription has expired. Please renew it to continue using the bot.');
             return;
@@ -185,12 +192,11 @@ client.on('message', async (msg) => {
                     }
                 })
                 .save(filePath.replace('.ogg', '.mp3'));
+        } else {
+            // Send response to user
+            const response = await generateResponse(msg.body);
+            await chat.sendMessage(response);
         }
-        // Generate response using OpenAI
-        const response = await generateResponse(msg.body);
-
-        // Send response to user
-        await chat.sendMessage(response);
     }
 });
 
@@ -210,11 +216,8 @@ async function checkUserRegistration(phoneNumber) {
 // Register user
 async function registerUser(phoneNumber) {
     try {
-        const currentTime = new Date();
-        const expirationTime = new Date(currentTime.getTime() + (2 * 60 * 1000));
         const user = await User.create({
-            phoneNumber,
-            freeTrial: expirationTime
+            phoneNumber
         });
         return user;
     } catch (error) {
@@ -238,32 +241,6 @@ async function generateResponse(input) {
     return completion.data.choices[0].message.content;
 }
 
-async function generateResponder(phone, input) {
-    const user = await User.findOne({
-        where: {
-            phoneNumber: phone
-        }
-    })
-    const date = new Date();
-    if (user.freeTrial < date) {
-        return 'Your free trial period has expired. Please register a subscription to continue using the bot!!'
-    } else {
-        const training = await Training.findOne({
-            where: {
-                id: 1
-            }
-        })
-        const completion = await openai.createChatCompletion({
-            model: "gpt-3.5-turbo",
-            messages: [{ role: "user", content: `${training.data} Give a response to this prompt "${input}" based on the data above.` }],
-        });
-
-        return completion.data.choices[0].message.content;
-    }
-
-
-
-}
 
 // Start client
 client.initialize();
