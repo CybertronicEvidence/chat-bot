@@ -7,7 +7,7 @@ const { Op } = require("sequelize")
 const User = require("./models/user.model");
 const Subscription = require("./models/subscription.model")
 const Training = require("./models/training.model");
-const { compareAsc } = require('date-fns');
+const Message = require("./models/message.model")
 
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ffmpeg = require('fluent-ffmpeg');
@@ -160,7 +160,7 @@ client.on('message', async (msg) => {
                         const messages = await resp.data.text;
 
                         // generate response for transcribed text
-                        const message = await generateResponse(messages);
+                        const message = await generateResponse(user.id, messages);
 
                         // send message to user
                         await chat.sendMessage(message);
@@ -193,9 +193,20 @@ client.on('message', async (msg) => {
                 })
                 .save(filePath.replace('.ogg', '.mp3'));
         } else {
+
+            // save user message to db
+            await user.createMessage({
+                content: msg.body
+            })
+
             // Send response to user
-            const response = await generateResponse(msg.body);
+            const response = await generateResponse(user.id, msg.body);
             await chat.sendMessage(response);
+
+            // save bot response to db
+            await user.createMessage({
+                content: response
+            })
         }
     }
 });
@@ -226,16 +237,30 @@ async function registerUser(phoneNumber) {
 }
 
 // Generate response using OpenAI
-async function generateResponse(input) {
+async function generateResponse(userId, input) {
     const training = await Training.findOne({
         where: {
             id: 1
         }
     })
-    console.log(training.data)
+
+    const messages = await Message.findAll({
+        where: {
+            userId: userId
+        }
+    })
+
+    let messageContent = []
+    messages.forEach(message => {
+        messageContent.push(message.content)
+    })
+
+    let message = messageContent.join('. ').toString('')
+    console.log(message)
+
     const completion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: `${training.data} Give a response to this prompt "${input}" based on the data above.` }],
+        messages: [{ role: "user", content: `${training.data} \n ${message} \n Give a response to this prompt "${input}" based on all the data above.` }],
     });
 
     return completion.data.choices[0].message.content;
