@@ -6,7 +6,7 @@ const Message = sequelize.define(
     'message',
     {
         content: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: false
         }
     });
