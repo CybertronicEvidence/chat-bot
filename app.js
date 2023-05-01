@@ -16,21 +16,29 @@ const WooCommerce = new WooCommerceAPI({
     version: 'wc/v3',
 });
 
+
 // Define webhook endpoint to receive subscription updates
 app.post('/subscriptions', async (req, res) => {
     try {
-        const { phone, subscriptionId } = req.body;
+        const { paymentId } = req.body.custom_fields;
+        const subscriptionId = req.body.data.subscription.id;
 
         // Query user model for user with given phone number
-        const user = await User.findOne({ where: { phoneNumber: phone } });
+        const user = await User.findOne({ where: { paymentId } });
         if (!user) {
             return res.status(400).send('User not found');
         }
         const Subscription = await user.getSubscription();
 
         // Update subscription model for user
-        const subscription = await WooCommerce.get(`subscriptions/${subscriptionId}`);
-        await Subscription.update({ status: subscription.status }, { where: { userId: user.id } });
+        const subscriptions = await WooCommerce.get(`subscriptions?paymentId=${paymentId}`);
+
+        const subscription = subscriptions.find(subscription => subscription.id === subscriptionId);
+
+        const { status, date_expiry_gmt } = subscription;
+        await Subscription.update({
+            expiryDate: new Date(date_expiry_gmt),
+        }, { where: { userId: user.id } });
 
         return res.status(200).send('Subscription updated');
     } catch (err) {
