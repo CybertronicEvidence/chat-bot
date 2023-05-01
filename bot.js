@@ -29,12 +29,6 @@ client.on('qr', (qr) => {
 });
 
 client.on('ready', async () => {
-    try {
-        await connectDB()
-            .then(() => console.log('Database Connected!'))
-    } catch (err) {
-        console.log(err)
-    }
     console.log('Client is ready!');
 });
 
