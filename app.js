@@ -270,9 +270,9 @@ client.initialize();
 
 // Set up WooCommerce API connection
 const WooCommerce = new WooCommerceAPI({
-    url: 'https://yourstore.com',
-    consumerKey: 'your_consumer_key',
-    consumerSecret: 'your_consumer_secret',
+    url: process.env.url,
+    consumerKey: process.env.c_key,
+    consumerSecret: process.env.c_secret,
     wpAPI: true,
     version: 'wc/v3',
 });
