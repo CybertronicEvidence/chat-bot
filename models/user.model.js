@@ -10,6 +10,10 @@ const User = sequelize.define(
             allowNull: false,
             unique: true
         },
+        email: {
+            type: DataTypes.STRING,
+            unique: true
+        },
         hasUsedFreeTrial: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
