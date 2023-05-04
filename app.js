@@ -63,11 +63,27 @@ client.on('message', async (msg) => {
         console.log('Trainig data updated')
         chat.sendMessage('Training data updated!')
     }
+
+    if (msg.body.startsWith('!add-email')) {
+        let email = msg.body.replace('!add-email ', '');
+        console.log(email)
+        const user = await User.findOne({
+            where: {
+                phoneNumber: msg.from
+            }
+        })
+
+        await user.update({
+            email
+        })
+        await chat.sendMessage('Email added successfully')
+    }
+
     // Check if user is registered
     const user = await checkUserRegistration(msg.from);
     if (!user) {
         await registerUser(msg.from);
-        await chat.sendMessage('Welcome to my bot! You have a free 2-minute trial period. Ask me anything!');
+        await chat.sendMessage('Welcome to my bot! You have a free 2-minute trial period. Ask me anything! Don\'t forget to add you email with !add-email <your email>');
 
         const user = await User.findOne({
             where: {
@@ -281,22 +297,19 @@ const WooCommerce = new WooCommerceAPI({
 // Define webhook endpoint to receive subscription updates
 app.post('/subscriptions', async (req, res) => {
     try {
-        const { paymentId } = req.body.custom_fields;
-        const subscriptionId = req.body.data.subscription.id;
+        const { email, subscriptionId } = req.body;
 
         // Query user model for user with given phone number
-        const user = await User.findOne({ where: { paymentId } });
+        const user = await User.findOne({ where: { email } });
         if (!user) {
             return res.status(400).send('User not found');
         }
         const Subscription = await user.getSubscription();
 
         // Update subscription model for user
-        const subscriptions = await WooCommerce.get(`subscriptions?paymentId=${paymentId}`);
+        const subscriptions = await WooCommerce.get(`subscriptions/${subscriptionId}`);
 
-        const subscription = subscriptions.find(subscription => subscription.id === subscriptionId);
-
-        const { status, date_expiry_gmt } = subscription;
+        const { status, date_expiry_gmt } = subscriptions;
         await Subscription.update({
             expiryDate: new Date(date_expiry_gmt),
         }, { where: { userId: user.id } });
