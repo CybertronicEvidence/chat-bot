@@ -94,7 +94,7 @@ client.on('message', async (msg) => {
         // Mark user as having used the free trial
         await user.update({ hasUsedFreeTrial: true });
 
-        // Set timer for 2 minutes
+        // Set timer for 5 minutes
         setTimeout(async () => {
             // Check if user has upgraded to a paid subscription
             const hasPaidSubscription = await Subscription.findOne({
@@ -106,7 +106,7 @@ client.on('message', async (msg) => {
                 await user.update({ hasExceededFreeTrialLimit: true });
                 await chat.sendMessage('Your free trial period has expired. Please register a subscription to continue using the bot.');
             }
-        }, 120000); // 2 minutes
+        }, 432000000); // 5 minutes
 
 
     } else {
